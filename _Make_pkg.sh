@@ -12,7 +12,7 @@ mv webftp_server_rebug_cobra_english.sprx updater/pkgfiles/USRDIR/webftp_server_
 mv webftp_server_rebug_cobra_ps3mapi.sprx updater/pkgfiles/USRDIR/webftp_server_rebug_cobra_ps3mapi.sprx
 mv webftp_server_rebug_cobra_multi23.sprx updater/pkgfiles/USRDIR/webftp_server_rebug_cobra_multi23.sprx
 
-#cls
+clear
 cd updater
 sh Make_PKG.sh 2>&1
 
