@@ -67,6 +67,6 @@ mv webftp_server_cobra.sprx webftp_server.sprx
 ls *.sprx
 
 echo -ne "\033]0;Finished\007"
-read -n 1 -s -p "Press any key to copy and bluid pkg"
+read -n 1 -s -p "Press any key to copy and build pkg"
 
 sh _Make_pkg.sh 2>&1
