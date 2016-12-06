@@ -15,5 +15,4 @@ mv webftp_server_rebug_cobra_multi23.sprx updater/pkgfiles/USRDIR/webftp_server_
 clear
 cd updater
 sh Make_PKG.sh 2>&1
-
-mv webMAN_MOD_1.45.xx_Updater.pkg ../webMAN_MOD_1.45.xx_Updater.pkg
+mv webMAN_MOD_1.45.xx_Updater*.pkg ..

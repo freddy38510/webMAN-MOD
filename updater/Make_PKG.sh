@@ -34,6 +34,8 @@ rm package.conf
 [ -f webMAN_MOD_1.45.xx_Updater.pkg ] && rm webMAN_MOD_1.45.xx_Updater.pkg || :
 rm -rf build
 
-mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater.pkg
-ls -o ../webMAN_MOD*.pkg
+[ $choice = "1" ] && mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater.pkg ||
+mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater_KMZ_icons.pkg
+ls -o webMAN_MOD*.pkg
+
 echo -ne "\033]0;Finished\007"
