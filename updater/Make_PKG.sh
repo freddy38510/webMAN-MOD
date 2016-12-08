@@ -12,9 +12,9 @@ tput clear
 tput sgr0
 
 [ $choice = "1" ] && 
-cp -R icons/standard/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with standard icons\007" || 
-cp -R icons/kzm/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with KMZ icons\007"
-
+yes | cp -rf icons/standard/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with standard icons\007" || 
+yes | cp -rf icons/kzm/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with KMZ icons\007"
+clear
 make clean
 make pkg
 
@@ -36,6 +36,6 @@ rm -rf build
 
 [ $choice = "1" ] && mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater.pkg ||
 mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater_KMZ_icons.pkg
-ls -o webMAN_MOD*.pkg
+#ls -o webMAN_MOD*.pkg
 
 echo -ne "\033]0;Finished\007"
