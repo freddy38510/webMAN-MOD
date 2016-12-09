@@ -1161,27 +1161,6 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 #endif
 
 	// ------------------
-	// mount ROMS game
-	// ------------------
- #ifdef MOUNT_ROMS
-	{
-		int plen = strlen(_path) - 4; if(plen < 0) plen = 0;
-
-		if(strstr(_path, "/ROMS/") || strcasestr(_path, ".SELF") || strcasestr(ROMS_EXTENSIONS, _path + plen))
-		{
-			sys_map_path("/dev_hdd0/game/PKGLAUNCH", NULL);
-			sys_map_path("/dev_hdd0/game/PKGLAUNCH/PS3_GAME/USRDIR/cores", "/dev_hdd0/game/SSNE10000/USRDIR/cores");
-
-			cobra_map_game("/dev_hdd0/game/PKGLAUNCH", "PKGLAUNCH", 0);
-
-			save_file("/dev_hdd0/game/PKGLAUNCH/USRDIR/launch.txt", _path, 0);
-			mount_unk = EMU_MAX;
-			goto exit_mount;
-		}
-	}
- #endif
-
-	// ------------------
 	// mount GAMEI game
 	// ------------------
  #ifdef PKG_LAUNCHER
@@ -1194,6 +1173,39 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 			sprintf(_path, "/dev_hdd0/game/%s", map_title_id);
 			sys_map_path(_path, _path0);
 
+			mount_unk = EMU_MAX;
+			goto exit_mount;
+		}
+	}
+ #endif
+
+	// ------------------
+	// mount ROMS game
+	// ------------------
+ #ifdef MOUNT_ROMS
+	if(isDir("/dev_hdd0/game/PKGLAUNCH"))
+	{
+		int plen = strlen(_path) - 4;
+		if(plen < 0) plen = 0;
+		else if(_path[plen + 2] == '.') plen+=2;
+		else if(_path[plen + 1] == '.') plen++;
+
+		if((strstr(_path, "/ROMS/") != NULL) || (strcasestr(_path, ".SELF") != NULL) || (strcasestr(ROMS_EXTENSIONS, _path + plen) != NULL))
+		{
+			do_umount(false);
+
+			sys_timer_usleep(4000);
+
+			cobra_send_fake_disc_eject_event();
+
+			sys_timer_usleep(4000);
+
+			sys_map_path("/dev_hdd0/game/PKGLAUNCH", NULL);
+			sys_map_path("/dev_hdd0/game/PKGLAUNCH/PS3_GAME/USRDIR/cores", "/dev_hdd0/game/SSNE10000/USRDIR/cores");
+
+			cobra_map_game("/dev_hdd0/game/PKGLAUNCH", "PKGLAUNCH", 0);
+
+			save_file("/dev_hdd0/game/PKGLAUNCH/USRDIR/launch.txt", _path, 0);
 			mount_unk = EMU_MAX;
 			goto exit_mount;
 		}
@@ -1315,7 +1327,6 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 		cobra_send_fake_disc_eject_event();
 
 		sys_timer_usleep(4000);
-
 
 		// ----------
 		// mount iso
