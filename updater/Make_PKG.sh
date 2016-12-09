@@ -7,13 +7,27 @@ echo -e "1. Standard icons"
 echo -e "2. KMZ icons"
  
 tput bold
-read -p "Enter your choice [1-2] " choice
-tput clear
-tput sgr0
 
-[ $choice = "1" ] && 
-yes | cp -rf icons/standard/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with standard icons\007" || 
-yes | cp -rf icons/kzm/* pkgfiles/USRDIR/; echo -ne "\033]0;Building pkg with KMZ icons\007"
+while [ ! ${finished} ]
+do
+	read -p "Enter your choice [1-2] " choice
+	tput clear
+	tput sgr0
+
+	if [ $choice -eq 1 ]
+	then
+		yes |"cp" -rf icons/standard/* pkgfiles/USRDIR/;
+		echo -ne "\033]0;Building pkg with standard icons\007";
+		finished=true
+	elif [ $choice -eq 2 ]
+	then
+		yes |"cp" -rf icons/kzm/* pkgfiles/USRDIR/;
+		echo -ne "\033]0;Building pkg with KMZ icons\007";
+		finished=true
+	else
+		echo "Invalid number";
+	fi
+done
 clear
 make clean
 make pkg
@@ -34,8 +48,8 @@ rm package.conf
 [ -f webMAN_MOD_1.45.xx_Updater.pkg ] && rm webMAN_MOD_1.45.xx_Updater.pkg || :
 rm -rf build
 
-[ $choice = "1" ] && mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater.pkg ||
-mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater_KMZ_icons.pkg
+[ $choice = "1" ] && mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater.pkg || :
+[ $choice = "2" ] && mv EP0001-UPDWEBMOD_00-0000000000000000.pkg webMAN_MOD_1.45.xx_Updater_KMZ_icons.pkg || :
 #ls -o webMAN_MOD*.pkg
 
 echo -ne "\033]0;Finished\007"
