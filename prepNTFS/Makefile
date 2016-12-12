@@ -7,24 +7,7 @@ ifeq ($(strip $(PSL1GHT)),)
 $(error "Please set PSL1GHT in your environment. export PSL1GHT=<path>")
 endif
 
-#---------------------------------------------------------------------------------
-#  TITLE, APPID, CONTENTID, ICON0 SFOXML before ppu_rules.
-#---------------------------------------------------------------------------------
-
-TITLE		:=	Prepare NTFS Drives 1.17   (Hold X to keep existing cache files)
-APPID		:=	BLES80616
-CONTENTID	:=	UP0001-$(APPID)_00-0000000000000000
-
 include $(PSL1GHT)/ppu_rules
-
-# working scetool flags
-#-v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=01 --self-auth-id=1010000001000003 --self-app-version=0001000000000000 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-fw-version=0003004000000000 --self-ctrl-flags=4000000000000000000000000000000000000000000000000000000000000002 --self-cap-flags=009EBDEFBB88E5AE0000000000000000000000000000003B0000000100002000 --np-license-type=FREE --np-content-id=EP0001-BLES80616_00-PREPNTFS0MOD0111 --np-app-type=EXEC --np-real-fname=EBOOT.BIN --encrypt EBOOT.elf EBOOT.BIN
-
-# aditional scetool flags (--self-ctrl-flags, --self-cap-flags...)
-SCETOOL_FLAGS	+=	--compress-data=TRUE --skip-sections=TRUE --key-revision=01 --self-auth-id=1010000001000003 --self-add-shdrs=TRUE
-SCETOOL_FLAGS	+=	--self-ctrl-flags 4000000000000000000000000000000000000000000000000000000000000002
-SCETOOL_FLAGS	+=	--self-cap-flags 00000000000000000000000000000000000000000000007B0000000100000000
-#SCETOOL_FLAGS	+=	--self-cap-flags 009EBDEFBB88E5AE0000000000000000000000000000003B0000000100002000
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -42,27 +25,38 @@ PKGFILES	:=	$(CURDIR)/pkgfiles
 ICON0		:=	$(PKGFILES)/ICON0.PNG
 PARAMSFO	:=	$(PKGFILES)/PARAM.SFO
 
-#---------------------------------------------------------------------------------
-# any extra libraries we wish to link with the project
-#---------------------------------------------------------------------------------
-LIBS		:=	../lib/libntfs_ext.a ../lib/libcobra.a -lc -lsysfs -lfont -ltiny3d -lsimdmath -lgcm_sys -lio -lsysutil -lrt -llv2 -lsysmodule -lm
-
+TITLE		:=	Prepare NTFS Drives 1.17   (Hold X to keep existing cache files)
+APPID		:=	BLES80616
+CONTENTID	:=	UP0001-$(APPID)_00-0000000000000000
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 
+# working scetool flags
+#-v --sce-type=SELF --compress-data=TRUE --skip-sections=TRUE --key-revision=01 --self-auth-id=1010000001000003 --self-app-version=0001000000000000 --self-add-shdrs=TRUE --self-vendor-id=01000002 --self-type=NPDRM --self-fw-version=0003004000000000 --self-ctrl-flags=4000000000000000000000000000000000000000000000000000000000000002 --self-cap-flags=009EBDEFBB88E5AE0000000000000000000000000000003B0000000100002000 --np-license-type=FREE --np-content-id=EP0001-BLES80616_00-PREPNTFS0MOD0111 --np-app-type=EXEC --np-real-fname=EBOOT.BIN --encrypt EBOOT.elf EBOOT.BIN
+
+# aditional scetool flags (--self-ctrl-flags, --self-cap-flags...)
+SCETOOL_FLAGS	+=	--compress-data=TRUE --skip-sections=TRUE --key-revision=01 --self-auth-id=1010000001000003
+SCETOOL_FLAGS	+=	--self-ctrl-flags 4000000000000000000000000000000000000000000000000000000000000002
+SCETOOL_FLAGS	+=	--self-cap-flags 00000000000000000000000000000000000000000000007B0000000100000000
+#SCETOOL_FLAGS	+=	--self-cap-flags 009EBDEFBB88E5AE0000000000000000000000000000003B0000000100002000
+
 CFLAGS		=	-O2 -Wall -std=gnu99 -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS	=	$(CFLAGS)
 
-LDFLAGS		=	$(MACHDEP) -Wl,-Map,$(notdir $@).map
+LDFLAGS		=	$(MACHDEP) -Wl,-Map,$(notdir $@).map,--allow-multiple-definition
 
+#---------------------------------------------------------------------------------
+# any extra libraries we wish to link with the project
+#---------------------------------------------------------------------------------
+LIBS		:=	-lntfs_ext -lcobra -lc -lsysfs -lfont -ltiny3d -lsimdmath -lgcm_sys -lio -lsysutil -lrt -llv2 -lsysmodule -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=
+LIBDIRS	:= $(PORTLIBS)
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -136,29 +130,16 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).self  EBOOT.BIN
+	@rm -fr $(BUILD) *.elf *.self *.pkg
 
 #---------------------------------------------------------------------------------
 run:
 	ps3load $(OUTPUT).self
 
 #---------------------------------------------------------------------------------
-pkg: $(BUILD) $(OUTPUT).pkg
-	@echo Creating PKG...
-	@mkdir -p $(BUILD)/pkg
-	@mkdir -p $(BUILD)/pkg/USRDIR
-	@$(SELF_NPDRM) $(SCETOOL_FLAGS) --np-content-id=$(CONTENTID) --encrypt $(BUILDDIR)/$(basename $(notdir $(OUTPUT))).elf $(BUILDDIR)/../EBOOT.BIN
-#	@$(SFO) --title "$(TITLE)" --appid "$(APPID)" -f $(SFOXML) $(BUILD)/pkg/PARAM.SFO
-	@cp $(ICON0) $(BUILD)/pkg/
-	@cp $(PARAMSFO) $(BUILD)/pkg/
-	@$(PKG) --contentid $(CONTENTID) $(BUILD)/pkg/ $(OUTPUT).pkg
+pkg:	$(BUILD) $(OUTPUT).pkg
 
 #---------------------------------------------------------------------------------
-
-npdrm: $(BUILD)
-	@$(SELF_NPDRM) $(SCETOOL_FLAGS) --np-content-id=$(CONTENTID) --encrypt $(BUILDDIR)/$(basename $(notdir $(OUTPUT))).elf $(BUILDDIR)/../EBOOT.BIN
-#---------------------------------------------------------------------------------
-
 else
 
 DEPENDS	:=	$(OFILES:.o=.d)
