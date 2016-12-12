@@ -716,6 +716,7 @@ static void do_umount_iso(void)
 	if(effective_disctype != DISC_TYPE_NONE)
 	{
 		cobra_send_fake_disc_eject_event();
+
 		for(u8 m = 0; m < 250; m++)
 		{
 			sys_timer_usleep(4000);
@@ -809,6 +810,19 @@ static void do_umount(bool clean)
 
 #endif //#ifdef COBRA_ONLY
 }
+
+#ifdef COBRA_ONLY
+static void do_umount_eject(void)
+{
+	do_umount(false);
+
+	sys_timer_usleep(4000);
+
+	cobra_send_fake_disc_eject_event();
+
+	sys_timer_usleep(4000);
+}
+#endif //#ifdef COBRA_ONLY
 
 static void get_last_game(char *last_path)
 {
@@ -1158,7 +1172,6 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 		}
 	}
  #endif
-#endif
 
 	// ------------------
 	// mount GAMEI game
@@ -1192,13 +1205,7 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 
 		if((strstr(_path, "/ROMS/") != NULL) || (strcasestr(_path, ".SELF") != NULL) || (strcasestr(ROMS_EXTENSIONS, _path + plen) != NULL))
 		{
-			do_umount(false);
-
-			sys_timer_usleep(4000);
-
-			cobra_send_fake_disc_eject_event();
-
-			sys_timer_usleep(4000);
+			do_umount_eject();
 
 			sys_map_path("/dev_hdd0/game/PKGLAUNCH", NULL);
 			sys_map_path("/dev_hdd0/game/PKGLAUNCH/PS3_GAME/USRDIR/cores", "/dev_hdd0/game/SSNE10000/USRDIR/cores");
@@ -1211,6 +1218,7 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 		}
 	}
  #endif
+#endif
 
 	// ------------------
 	// mount PS2 Classic
@@ -1320,13 +1328,7 @@ static bool mount_with_mm(const char *_path0, u8 do_eject)
 		// unmount current game
 		// ---------------------
 
-		do_umount(false);
-
-		sys_timer_usleep(4000);
-
-		cobra_send_fake_disc_eject_event();
-
-		sys_timer_usleep(4000);
+		do_umount_eject();
 
 		// ----------
 		// mount iso
