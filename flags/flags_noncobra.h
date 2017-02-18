@@ -11,7 +11,7 @@
 
 #define DEX_SUPPORT		1	// add support for DEX
 #define DECR_SUPPORT	1	// add support for DECR
-//#define LAST_FIRMWARE_ONLY 1	//  support only 4.80 CEX / DEX (no DECR support)
+//#define LAST_FIRMWARE_ONLY 1	//  support only 4.80-4.81 CEX / DEX (no DECR support)
 
 //// FEATURES ////
 #define FIX_GAME		1	// Auto-Fix game
@@ -20,7 +20,7 @@
 #define DEBUG_MEM		1	// /dump.ps3 / peek.lv1 / poke.lv1 / find.lv1 / peek.lv2 / poke.lv2 / find.lv2
 #define VIDEO_REC		1	// /videorec.ps3  start/stop video recording (in-game only) (thanks to mysis & 3141card)
 #define LOAD_PRX		1	// /loadprx.ps3?slot=n&prx=path/file.sprx  (load prx)
-#define FAKEISO 		1	// support .ntfs[BDFILE] (fake ISO)
+//#define FAKEISO 		1	// support .ntfs[BDFILE] (fake ISO)
 #define BDVD_REGION		1	// change BD/DVD region
 #define REMOVE_SYSCALLS	1	// remove syscalls on startup and using R2+TRIANGLE
 #define SPOOF_CONSOLEID	1	// spoof idps/psid (thanks to M@tumot0 & zar)
@@ -34,10 +34,11 @@
 #define SYS_ADMIN_MODE	1	// Enable restricted / admin modes using L2+R2+TRIANGLE
 //#define PKG_LAUNCHER	1	// scan & mount np games extracted to GAMEI / scan ROMS
 #define PKG_HANDLER		1	// /download.ps3?url=<url>, /download.ps3?to=<path>&url=<url>, /install.ps3<pkg-path> (thanks to bguerville & mysis)
+//#define USE_NTFS		1	// add NTFS support
 
 //// EXTRA FEATURES ////
 //#define XMB_SCREENSHOT	1	// screenshot XMB using L2 + R2 + SELECT + START (thanks to 3141card)
-//#define SWAP_KERNEL		1	// load custom lv2_kernel.self patching LV1 and soft rebooting (use /copy.ps3)
+//#define SWAP_KERNEL		1	// load custom lv2_kernel.self patching LV1 and soft rebooting (use /copy.ps3) [requires QA flag enabled]
 //#define WM_CUSTOM_COMBO	"/dev_hdd0/tmp/wm_combo/wm_custom_"		// advanced custom combos
 //#define NET3NET4			1	// add support for /net3 and /net4
 //#define PS3NET_SERVER		1	// ps3 net server
@@ -53,4 +54,6 @@
 //#define AUTO_EJECT_DISC	1	// eject disc holding SELECT on mount
 //#define RAWISO_PSX_MULTI		// support for multi PSX from Iris Manager (it's incomplete - only rawseciso.h code is complete) (thanks to Estwald)
 //#define DO_WM_REQUEST_POLLING	// poll file /dev_hdd0/tmp/wm_request (can be used by external apps)
+//#define SECURE_FILE_ID	// hook savedata plugin to capture secure file id (this feature is currently broken)
+
 

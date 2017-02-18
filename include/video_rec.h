@@ -119,6 +119,7 @@ static void show_rec_format(const char *msg)
 	if(flags == 0x200) strcat(text, "368p @ "); else
 	if(flags == 0x300) strcat(text, "480p @ "); else
 	if(flags == 0x600) strcat(text, "720p @ ");
+	//if(flags == 0x700) strcat(text, "1080p @ ");
 
 	flags = (rec_video_format & 0xF0); // video bitrate
 	if(flags == 0x00) strcat(text, "512K");   else
@@ -130,6 +131,7 @@ static void show_rec_format(const char *msg)
 	if(flags == 0x70) strcat(text, "11000K"); else
 	if(flags == 0x80) strcat(text, "20000K"); else
 	if(flags == 0x90) strcat(text, "25000K");
+	//if(flags == 0xA0) strcat(text, "30000K");
 
 	flags = (rec_audio_format & 0xF000); // audio format
 	if(flags == 0x0000) strcat(text, "\nAudio: AAC ");  else
@@ -253,7 +255,7 @@ static bool rec_start(const char *param)
 	}
 
 	reco_open(-1); // memory container
-	sys_timer_sleep(4);
+	sys_ppu_thread_sleep(4);
 
 
 	if(View_Find(REC_PLUGIN) != 0)
@@ -273,7 +275,7 @@ static bool rec_start(const char *param)
 	else
 	{
 		reco_open(-1); //reco_open((vsh_memory_container_by_id(1) == NONE ) ? vsh_memory_container_by_id(0) : vsh_memory_container_by_id(1));
-		sys_timer_sleep(3);
+		sys_ppu_thread_sleep(3);
 
 		if(View_Find(REC_PLUGIN) != 0)
 		{

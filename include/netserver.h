@@ -17,7 +17,7 @@ typedef struct {
 	uint64_t part_size;
 	uint64_t file_size;
 	int CD_SECTOR_SIZE_2352;
-	char dirpath[MAX_PATH_LEN/2];
+	char dirpath[STD_PATH_LEN];
 } _client;
 
 _client clients[MAX_CLIENTS];
@@ -67,11 +67,11 @@ static int process_open_cmd(u8 index, netiso_open_cmd *cmd)
 	uint16_t fp_len, root_len;
 
 	root_len = 12;
-	fp_len = (int16_t)(cmd->fp_len); if(root_len + fp_len > MAX_PATH_LEN) return FAILED;
+	fp_len = (int16_t)(cmd->fp_len); if(root_len + fp_len > STD_PATH_LEN) return FAILED;
 
 	/// get file path ///
 
-	char filepath[MAX_PATH_LEN];
+	char filepath[STD_PATH_LEN];
 
 	int s = clients[index].s;
 
@@ -339,11 +339,11 @@ static int process_stat_cmd(u8 index, netiso_stat_cmd *cmd)
 	uint16_t fp_len, root_len;
 
 	root_len = 12;
-	fp_len = (int16_t)(cmd->fp_len); if(root_len + fp_len > MAX_PATH_LEN) return FAILED;
+	fp_len = (int16_t)(cmd->fp_len); if(root_len + fp_len > STD_PATH_LEN) return FAILED;
 
 	/// get file path ///
 
-	char filepath[MAX_PATH_LEN];
+	char filepath[STD_PATH_LEN];
 
 	filepath[fp_len] = 0;
 	ret = recv(s, (void *)filepath, fp_len, 0);
@@ -419,11 +419,11 @@ static int process_open_dir_cmd(u8 index, netiso_open_dir_cmd *cmd)
 	uint16_t dp_len, root_len;
 
 	root_len = 12;
-	dp_len = (int16_t)(cmd->dp_len); if(root_len + dp_len > MAX_PATH_LEN/2) return FAILED;
+	dp_len = (int16_t)(cmd->dp_len); if(root_len + dp_len > STD_PATH_LEN) return FAILED;
 
 	/// get file path ///
 
-	char dirpath[MAX_PATH_LEN/2];
+	char dirpath[STD_PATH_LEN];
 
 	dirpath[dp_len] = 0;
 
@@ -502,7 +502,7 @@ static int process_read_dir_cmd(u8 index, netiso_read_dir_entry_cmd *cmd)
 	CellFsDirent entry;
 
 	int dir;
-	char dirpath[MAX_PATH_LEN];
+	char dirpath[STD_PATH_LEN];
 
 	/// list folder in all devices ///
 
@@ -527,7 +527,7 @@ static int process_read_dir_cmd(u8 index, netiso_read_dir_entry_cmd *cmd)
 			d_name_len = entry.d_namlen;
 			if(d_name_len == 0) continue;
 
-			if(dirpath_len + d_name_len < MAX_PATH_LEN - 1)
+			if(dirpath_len + d_name_len < STD_PATH_LEN - 1)
 			{
 				sprintf(dirpath, "%s%s/%s", drives[i], clients[index].dirpath, entry.d_name);
 				st.st_mode  = S_IFDIR;
@@ -656,7 +656,6 @@ static void handleclient_net(uint64_t arg)
 		{
 			break;
 		}
-		//sys_timer_usleep(1668);
 	}
 
 	sclose(&clients[index].s);
@@ -669,15 +668,15 @@ static void handleclient_net(uint64_t arg)
 
 static void netsvrd_thread(uint64_t arg)
 {
-	int list_s = FAILED;
+	int list_s = NONE;
 
 relisten:
 	if(working) list_s = slisten(webman_config->netsrvp, 4);
 	else goto end;
 
-	if(working && (list_s < 0))
+	if(list_s < 0)
 	{
-		sys_timer_sleep(3);
+		sys_ppu_thread_sleep(1);
 		if(working) goto relisten;
 		else goto end;
 	}
@@ -686,11 +685,11 @@ relisten:
 	{
 		while(working)
 		{
-			sys_timer_usleep(1668);
+			sys_ppu_thread_usleep(1668);
 			int conn_s_net;
 			if(!working) break;
-			else
-			if(working && (conn_s_net = accept(list_s, NULL, NULL)) > 0)
+
+			if((conn_s_net = accept(list_s, NULL, NULL)) > 0)
 			{
 				// get client slot
 				int index = NONE;
@@ -710,7 +709,6 @@ relisten:
 			if((sys_net_errno == SYS_NET_EBADF) || (sys_net_errno == SYS_NET_ENETDOWN))
 			{
 				sclose(&list_s);
-				list_s = FAILED;
 				if(working) goto relisten;
 				else break;
 			}

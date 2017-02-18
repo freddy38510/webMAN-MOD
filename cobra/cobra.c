@@ -30,9 +30,9 @@
 #define  _16KB_		  16384UL
 #define _128KB_		 131072UL
 
-#define PSPL_ICON		"/dev_hdd0/game/PSPC66820/ICON0.PNG"
 #define PSPL_PATH		"/dev_hdd0/game/PSPC66820"
-#define PSPL_LAMBDA		"/dev_hdd0/game/PSPC66820/USRDIR/CONTENT/lambda.db"
+#define PSPL_ICON		PSPL_PATH "/ICON0.PNG"
+#define PSPL_LAMBDA		PSPL_PATH "/USRDIR/CONTENT/lambda.db"
 #define PSPL_LAMBDA_NONCE 	0x0ab40b3bbd1f1a7bULL
 
 #define DPRINTF(...)
@@ -109,7 +109,7 @@ size_t read_file(const char *file, char *data, size_t size, int32_t offset);
 int save_file(const char *file, const char *mem, int64_t size);
 
 int file_copy(const char *file1, char *file2, uint64_t maxbytes);
-int waitfor(const char *path, uint8_t timeout);
+int wait_for(const char *path, uint8_t timeout);
 
 // storage.h inline functions merged
 static int sys_storage_ext_get_emu_state(sys_emu_state_t *state)
@@ -348,41 +348,18 @@ static uint8_t lambda_md5[16] =
 
 static int translate_type(unsigned int type)
 {
-	if (type == 0)
-		return DISC_TYPE_NONE;
-
-	else if (type == DEVICE_TYPE_PS3_BD)
-		return DISC_TYPE_PS3_BD;
-
-	else if (type == DEVICE_TYPE_PS3_DVD)
-		return DISC_TYPE_PS3_DVD;
-
-	else if (type == DEVICE_TYPE_PS2_DVD)
-		return DISC_TYPE_PS2_DVD;
-
-	else if (type == DEVICE_TYPE_PS2_CD)
-		return DISC_TYPE_PS2_CD;
-
-	else if (type == DEVICE_TYPE_PSX_CD)
-		return DISC_TYPE_PSX_CD;
-
-	else if (type == DEVICE_TYPE_BDROM)
-		return DISC_TYPE_BDROM;
-
-	else if (type == DEVICE_TYPE_BDMR_SR)
-		return DISC_TYPE_BDMR_SR;
-
-	else if (type == DEVICE_TYPE_BDMR_RR)
-		return DISC_TYPE_BDMR_RR;
-
-	else if (type == DEVICE_TYPE_BDMRE)
-		return DISC_TYPE_BDMRE;
-
-	else if (type == DEVICE_TYPE_DVD)
-		return DISC_TYPE_DVD;
-
-	else if (type == DEVICE_TYPE_CD)
-		return DISC_TYPE_CD;
+	if(type == 0)					return DISC_TYPE_NONE;
+	if(type == DEVICE_TYPE_PS3_BD)	return DISC_TYPE_PS3_BD;
+	if(type == DEVICE_TYPE_PS3_DVD)	return DISC_TYPE_PS3_DVD;
+	if(type == DEVICE_TYPE_PS2_DVD)	return DISC_TYPE_PS2_DVD;
+	if(type == DEVICE_TYPE_PS2_CD)	return DISC_TYPE_PS2_CD;
+	if(type == DEVICE_TYPE_PSX_CD)	return DISC_TYPE_PSX_CD;
+	if(type == DEVICE_TYPE_BDROM)	return DISC_TYPE_BDROM;
+	if(type == DEVICE_TYPE_BDMR_SR)	return DISC_TYPE_BDMR_SR;
+	if(type == DEVICE_TYPE_BDMR_RR)	return DISC_TYPE_BDMR_RR;
+	if(type == DEVICE_TYPE_BDMRE)	return DISC_TYPE_BDMRE;
+	if(type == DEVICE_TYPE_DVD)		return DISC_TYPE_DVD;
+	if(type == DEVICE_TYPE_CD)		return DISC_TYPE_CD;
 
 	return DISC_TYPE_UNKNOWN;
 }
@@ -555,9 +532,6 @@ static int copy_file(char *src, char *dst)
 
 	int ret;
 	int fd_s, fd_d;
-	const uint32_t buf_size = _16KB_;
-	uint8_t _buf[_16KB_];
-	uint8_t *buf = (uint8_t *)_buf;
 
 	ret = cellFsOpen(src, CELL_FS_O_RDONLY, &fd_s, NULL, 0);
 	if(ret == 0)
@@ -565,6 +539,8 @@ static int copy_file(char *src, char *dst)
 		ret = cellFsOpen(dst, CELL_FS_O_WRONLY | CELL_FS_O_CREAT | CELL_FS_O_TRUNC, &fd_d, NULL, 0);
 		if(ret == 0)
 		{
+			const uint32_t buf_size = _16KB_;
+			uint8_t *buf = (uint8_t *)malloc(buf_size);
 			while(1)
 			{
 				uint64_t nread, nwritten;
@@ -583,6 +559,7 @@ static int copy_file(char *src, char *dst)
 			}
 
 			cellFsClose(fd_d);
+			free(buf);
 		}
 
 		cellFsClose(fd_s);
@@ -841,6 +818,7 @@ int cobra_disc_auth(void)
 		memset(buf, 0, 1024);
 
 		sys_ss_disc_auth(0x5007, (uint64_t)(uint32_t)buf);
+		free(buf);
 	}
 	else
 	{
@@ -1182,7 +1160,6 @@ int cobra_cd_read(uint32_t handle, void *buf, uint32_t sector, uint32_t count, i
 	return (nerrors > 0) ? EIO : 0;
 }
 
-
 int cobra_parse_cue(void *cue, uint32_t size, TrackDef *tracks, unsigned int max_tracks, unsigned int *num_tracks, char *filename, unsigned int fn_size)
 {
 #define skip_spaces() \
@@ -1201,7 +1178,7 @@ int cobra_parse_cue(void *cue, uint32_t size, TrackDef *tracks, unsigned int max
 	char *p;
 	char *bin_file;
 	int read_index;
-	int ntracks;
+	uint32_t ntracks;
 	uint32_t tracks_lba[max_tracks];
 	int ret = EABORT;
 
@@ -1218,7 +1195,7 @@ int cobra_parse_cue(void *cue, uint32_t size, TrackDef *tracks, unsigned int max
 continue_loop:
 		skip_spaces();
 
-		if (strncasecmp(p, "FILE", 4) == 0 && p[4] <= ' ' && p[4] > 0)
+		if (p[4] <= ' ' && p[4] > 0 && strncasecmp(p, "FILE", 4) == 0)
 		{
 			if (bin_file)
 			{
@@ -1267,7 +1244,7 @@ continue_loop:
 				strncpy(filename, bin_file, fn_size);
 			}
 		}
-		else if (strncasecmp(p, "TRACK", 5) == 0 && p[5] <= ' ' && p[5] > 0)
+		else if (p[5] <= ' ' && p[5] > 0 && strncasecmp(p, "TRACK", 5) == 0)
 		{
 			if (read_index)
 			{
@@ -1287,21 +1264,21 @@ continue_loop:
 
 			skip_spaces();
 
-			if (my_atoi(p) != (ntracks+1))
+			if (val(p) != (int)(ntracks+1))
 				break;
 
 			skip_spaces();
 
 			if (ntracks == 0)
 			{
-				if (strncasecmp(p, "MODE2/2352", 9) != 0 || !(p[10] <= ' ' && p[10] >= 0))
+				if (!(p[10] <= ' ' && p[10] >= 0) || strncasecmp(p, "MODE2/2352", 9) != 0)
 				{
 					//DPRINTF("First track is not MODE2/2352!!!\n");
 					ret = ENOTSUP;
 					break;
 				}
 			}
-			else if (strncasecmp(p, "AUDIO", 5) != 0 || !(p[5] <= ' ' && p[5] >= 0))
+			else if (!(p[5] <= ' ' && p[5] >= 0) || strncasecmp(p, "AUDIO", 5) != 0)
 			{
 				//DPRINTF("Found a track which is not AUDIO!!!\n");
 				ret = ENOTSUP;
@@ -1310,46 +1287,46 @@ continue_loop:
 
 			read_index = 1;
 		}
-		else if (strncasecmp(p, "INDEX", 5) == 0 && p[5] <= ' ' && p[5] > 0)
+		else if (p[5] <= ' ' && p[5] > 0 && strncasecmp(p, "INDEX", 5) == 0)
 		{
 			if (read_index)
 			{
 				p += 5;
 				skip_spaces();
 
-				if (my_atoi(p) == 1)
+				if (val(p) == 1)
 				{
 					skip_spaces();
 
 					int minutes, seconds, frames;
 
-					minutes = my_atoi(p);
-					if (minutes >= 256 || minutes < 0)
-					{
-						//DPRINTF("Bad minutes format.\n");
-					}
+					minutes = val(p);
+//					if (minutes >= 256 || minutes < 0)
+//					{
+//						//DPRINTF("Bad minutes format.\n");
+//					}
 
-					if (*p != ':')
-					{
-						//DPRINTF("Bad index formatting (1)\n");
-					}
+//					if (*p != ':')
+//					{
+//						//DPRINTF("Bad index formatting (1)\n");
+//					}
 
-					seconds = my_atoi(p+1);
-					if (seconds >= 256 || seconds < 0)
-					{
-						//DPRINTF("Bad seconds format\n");
-					}
+					seconds = val(p+1);
+//					if (seconds >= 256 || seconds < 0)
+//					{
+//						//DPRINTF("Bad seconds format\n");
+//					}
 
-					if (*p != ':')
-					{
-						//DPRINTF("Bad index formatting(2)\n");
-					}
+//					if (*p != ':')
+//					{
+//						//DPRINTF("Bad index formatting(2)\n");
+//					}
 
-					frames = my_atoi(p+1);
-					if (frames >= 256 || frames < 0)
-					{
-						//DPRINTF("Bad frames format\n");
-					}
+					frames = val(p+1);
+//					if (frames >= 256 || frames < 0)
+//					{
+//						//DPRINTF("Bad frames format\n");
+//					}
 
 					uint32_t lba = msf_to_lba(minutes, seconds, frames);
 
@@ -1393,7 +1370,7 @@ exit_loop:
 		return ret;
 	}
 
-	for (int i = 0; i < ntracks; i++)
+	for (unsigned int i = 0; i < ntracks; i++)
 	{
 		if (i < max_tracks)
 		{
@@ -1412,8 +1389,7 @@ exit_loop:
 
 	return 0;
 }
-*/
-/*
+
 int cobra_create_cue(char *path, char *filename, TrackDef *tracks, unsigned int num_tracks)
 {
 	if (!path || !tracks || !num_tracks)
@@ -1486,7 +1462,7 @@ int cobra_map_game(const char *path, const char *title_id, int *special_mode)
 
 	build_blank_iso(title_id);
 
-	int ret = sys_map_path((char*)"/dev_bdvd", path);
+	int ret = sys_map_path("/dev_bdvd", path);
 	if (ret != 0) return ret;
 
 	sys_map_path("//dev_bdvd", path);
@@ -1537,10 +1513,10 @@ int cobra_set_psp_umd(char *path, char *umd_root, char *icon_save_path)
 		return EABORT;
 	}
 
-	char sector[2048];
+	char sector[1024];
 	read_file(path, sector, sizeof(sector), 0x8000);
 
-	if (sector[0] != 1 || memcmp(sector + 1, "CD001", 5) != 0) return EIO;
+	if (sector[0] != 1 || memcmp(sector + 1, "CD001", 5) != 0) {free(sector); return EIO;}
 
 	unsigned int real_disctype, effective_disctype, iso_disctype;
 
@@ -1571,14 +1547,13 @@ int cobra_set_psp_umd(char *path, char *umd_root, char *icon_save_path)
 		{
 			if (real_disctype != DISC_TYPE_NONE)
 				cobra_send_fake_disc_insert_event();
-
 			return ret;
 		}
 
 		cobra_send_fake_disc_insert_event();
 
 		// Wait 3 seconds for automounter to mount iso
-		if (waitfor("/dev_bdvd", 3) == FAILED)
+		if (wait_for("/dev_bdvd", 3) == FAILED)
 		{
 			cobra_send_fake_disc_eject_event();
 			sys_storage_ext_umount_discfile();
@@ -1609,7 +1584,7 @@ int cobra_set_psp_umd(char *path, char *umd_root, char *icon_save_path)
 
 	if(file_copy(umd_file, icon_save_path, 0) >= CELL_FS_SUCCEEDED)
 	{
-		sys_map_path((char *)PSPL_ICON, icon_save_path);
+		sys_map_path(PSPL_ICON, icon_save_path);
 		snprintf(umd_file, sizeof(umd_file), "%s/PSP_GAME/SYSDIR/EBOOT.OLD", root);
 
 		if (cellFsStat(umd_file, &stat) != CELL_FS_SUCCEEDED)
@@ -1784,7 +1759,7 @@ int cobra_set_psp_umd(char *path, char *umd_root, char *icon_save_path)
 	{
 		int fd;
 
-		sys_map_path((char *)PSPL_ICON, icon_save_path);
+		sys_map_path(PSPL_ICON, icon_save_path);
 		snprintf(umd_file, sizeof(umd_file), "%s/PSP_GAME/SYSDIR/prometheus.prx", root);
 
 		if (cellFsStat(umd_file, &stat) != CELL_FS_SUCCEEDED)
@@ -1950,9 +1925,10 @@ int cobra_set_psp_umd2(char *path, char *umd_root, char *icon_save_path, uint64_
 		return ESYSVER;
 	}
 
+	//uint8_t sector[2048]; memset(sector, 0, 2048);
+	uint8_t *sector = (uint8_t*)malloc(1024);
 
-	int fd; uint8_t sector[2048]; memset(sector, 0, 2048);
-
+	int fd;
 	if (cellFsOpen(path, CELL_FS_O_RDONLY, &fd, NULL, 0) == CELL_FS_SUCCEEDED)
 	{
 		uint64_t pos;
@@ -1964,13 +1940,14 @@ int cobra_set_psp_umd2(char *path, char *umd_root, char *icon_save_path, uint64_
 		cellFsClose(fd);
 	}
 
-	if (sector[0] != 1 || memcmp(sector + 1, "CD001", 5) != 0) return EIO;
+	if (sector[0] != 1 || memcmp(sector + 1, "CD001", 5) != 0) {free(sector); return EIO;}
 
 	unsigned int real_disctype, effective_disctype, iso_disctype;
 
 	char title_id[11];
 	memset(title_id, 0, sizeof(title_id));
 	memcpy(title_id, sector+0x373, 10);
+	free(sector);
 
 	char *root;
 
@@ -2003,7 +1980,7 @@ int cobra_set_psp_umd2(char *path, char *umd_root, char *icon_save_path, uint64_
 		cobra_send_fake_disc_insert_event();
 
 		// Wait 0.5 seconds for automounter to mount iso
-		if (waitfor("/dev_bdvd", 1) == FAILED)
+		if (wait_for("/dev_bdvd", 1) == FAILED)
 		{
 			cobra_send_fake_disc_eject_event();
 			sys_storage_ext_umount_discfile();
@@ -2038,7 +2015,7 @@ int cobra_set_psp_umd2(char *path, char *umd_root, char *icon_save_path, uint64_
 	{
 		int fd;
 
-		sys_map_path((char *)PSPL_ICON, icon_save_path);
+		sys_map_path(PSPL_ICON, icon_save_path);
 		snprintf(umd_file, sizeof(umd_file), "%s/PSP_GAME/SYSDIR/EBOOT.OLD", root);
 
 		if (cellFsStat(umd_file, &stat) != CELL_FS_SUCCEEDED)
@@ -2149,7 +2126,7 @@ int cobra_set_psp_umd2(char *path, char *umd_root, char *icon_save_path, uint64_
 
 int cobra_unset_psp_umd(void)
 {
-	int ret = sys_map_path((char *)PSPL_ICON, NULL);
+	int ret = sys_map_path(PSPL_ICON, NULL);
 	if (ret == ENOSYS)
 		return ret;
 

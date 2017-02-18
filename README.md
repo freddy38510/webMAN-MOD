@@ -7,9 +7,9 @@ We would like to integrate all existing features available on the PS3 Scene like
 
 ## Current functionality
 ### General
-- Support on custom firmware with cobra feature enabled (ver 4.46-4.80 CEX & DEX)
-- Support on classic custom firmware with PRXLoader (ver 3.41-4.80 CEX & DEX) *https://github.com/NzV/PRX_Loader*
-- Support on classic custom firmware with Mamba PRXLoader (ver 3.41-4.80 CEX & DEX) *https://github.com/NzV/MAMBA_PRX_Loader*
+- Support on custom firmware with cobra feature enabled (ver 4.46-4.81 CEX & DEX)
+- Support on classic custom firmware with PRXLoader (ver 3.41-4.81 CEX & DEX) *https://github.com/NzV/PRX_Loader*
+- Support on classic custom firmware with Mamba PRXLoader (ver 3.41-4.81 CEX & DEX) *https://github.com/NzV/MAMBA_PRX_Loader*
 - All PS3 Models with downgrade compatibility is supported, see *http://www.psdevwiki.com/ps3/SKU_Models*
 
 ### webMAN vanilla features
@@ -22,6 +22,9 @@ We would like to integrate all existing features available on the PS3 Scene like
 - PAD shortcuts (*open include/combos.h for a complete list of shortcuts)
 - Keep USB device awake
 - Mount last game or AUTOBOOT.ISO to system startup
+- Support direct access to NTFS devices through web & ftp (1.45 / 1.45.11)
+- XMB integration XMB proxy (1.46 / 1.46.00)
+- Integrated prepNTFS
 
 ### webMAN MOD additional features
 - Easy installer/updater
@@ -48,6 +51,7 @@ We would like to integrate all existing features available on the PS3 Scene like
 - Support last_game.txt / autoboot on nonCobra edition
 - "Offline" mode (blocks some PSN/tracking servers). Game updates still work in this mode. (v1.33.03)
 - XMBM+ integration when grouping of XMB content is disabled (v1.33.03)
+- VSH Menu integration
 - Extended Content Profile Grouping (v1.33.07)
 - PS3 Manager API Support (PS3MAPI)
 - Integrated Mysis video_rec plugin and get klicensee
@@ -99,8 +103,9 @@ Requirements for GNU/Linux:
 - Mysis, who wrote some useful libs and reverse engineering VSH Exports functions: http://www.ps3devwiki.com/ps3/VSH#Exports
 - 3141card for VSH Menu POC & Littlebalup for his enhancement/new features
 - jjolano (John Olano) for OpenFTP server
+- Estwald for NTFS library, rawseciso, fake iso, etc.
+- The team that ported NTFS library from PSL1ght to PS3 SDK (freddy38510, bguerville, Zar, deank, Joonie)
 - PSX-SCENE, PSX-PLACE, PLAYSTATIONHAX, PS3HAX & other scene websites/users, who translated, helped in the testing process
-
 
 ##License
 ###WebMAN MOD

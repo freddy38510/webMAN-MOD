@@ -88,7 +88,7 @@
 					if(!(webman_config->combo2 & PLAY_DISC) && (data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] == CELL_PAD_CTRL_START) && (data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] == CELL_PAD_CTRL_L2))
 					{
 						char category[16], seg_name[40]; *category = *seg_name = NULL;
-						launch_disc(category, seg_name); // L2+START
+						launch_disc(category, seg_name, true); // L2+START
 						break;
 					}
 
@@ -157,9 +157,9 @@
 							cellFsUnlink(WMCONFIG);
 							{ BEEP1 }
 							show_msg((char*)STR_RMVWMCFG);
-							sys_timer_sleep(2);
+							sys_ppu_thread_sleep(2);
 							show_msg((char*)STR_RMVWMCFGOK);
-							sys_timer_sleep(3);
+							sys_ppu_thread_sleep(3);
 							goto reboot; // vsh reboot
 						}
 #ifdef COBRA_ONLY
@@ -276,7 +276,7 @@ show_persistent_popup:
 										sprintf(msg, "%s %s (%i %s)", STR_COPYING, current_file, copied_count, STR_FILES);
 
 									show_msg(msg);
-									sys_timer_sleep(2);
+									sys_ppu_thread_sleep(2);
 									if(data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] & (CELL_PAD_CTRL_R2 | CELL_PAD_CTRL_L2) ) break;
 								}
 #endif
@@ -352,7 +352,7 @@ show_popup:
 								{ PS3MAPI_DISABLE_ACCESS_SYSCALL8 }
 
 								show_msg(msg);
-								sys_timer_sleep(2);
+								sys_ppu_thread_sleep(2);
 							}
 						}
 						else
@@ -468,7 +468,7 @@ show_popup:
 							else
 #endif
 							{
-								mount_with_mm((char*)"_prev", 1);
+								mount_with_mm((char*)"_prev", EXPLORE_CLOSE_ALL);
 
 								n = 0;
 								break;
@@ -482,7 +482,7 @@ show_popup:
 							else
 #endif
 							{
-								mount_with_mm((char*)"_next", 1);
+								mount_with_mm((char*)"_next", EXPLORE_CLOSE_ALL);
 
 								n = 0;
 								break;
@@ -551,16 +551,9 @@ show_popup:
 						}
 						else if(!(webman_config->combo & UNLOAD_WM) && (data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] & CELL_PAD_CTRL_R3) ) // L3+R3+R2 (quit webMAN)
 						{
-#ifdef COBRA_ONLY
-							get_vsh_plugin_slot_by_name((char *)"VSH_MENU", true); // unload vsh menu
-#endif
-							if(!webman_config->fanc || (webman_config->ps2temp < 33))
-								restore_fan(0); //restore syscon fan control mode
-							else
-								restore_fan(1); //set ps2 fan control mode
-
-							working = 0;
 							wm_unload_combo = 1;
+
+							restore_settings(!webman_config->fanc || (webman_config->ps2temp < 33));
 
 							stop_prx_module();
 							sys_ppu_thread_exit(0);
@@ -743,10 +736,10 @@ show_popup:
 
 				if(reboot)
 				{
-					sys_timer_sleep(1);
+					sys_ppu_thread_sleep(1);
 					// reboot
 					show_msg((char*)"Switching successful! Reboot now...");
-					sys_timer_sleep(3);
+					sys_ppu_thread_sleep(3);
 					disable_dev_blind();
 reboot:
 					// vsh reboot
@@ -762,7 +755,8 @@ reboot:
 			}
 
 			if(!working) break;
-			sys_timer_usleep(300000);
+
+			sys_ppu_thread_usleep(300000);
 
 			if(show_persistent_popup)
 			{
@@ -772,4 +766,4 @@ reboot:
 			}
 		}
 
-		if(working && (n < 10)) sys_timer_usleep((12 - n) * 150000);
+		if(working && (n < 10)) sys_ppu_thread_usleep((12 - n) * 150000);

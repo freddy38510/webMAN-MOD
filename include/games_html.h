@@ -285,10 +285,10 @@ static void get_default_icon_from_folder(char *icon, u8 is_dir, const char *para
 			// get covers named as titleID from iso folder
 			if(!is_dir && HAS_TITLE_ID && (f0 < 7 || f0 > NTFS))
 			{
-				char titleid[MAX_PATH_LEN];
+				char titleid[STD_PATH_LEN];
 				char *pos = strchr(entry_name, '/'); if(pos) {*pos = NULL; sprintf(titleid, "%s/%s", entry_name, tempID); *pos = '/';} else sprintf(titleid, "%s", tempID);
 
-				char tmp[MAX_PATH_LEN]; if(HAS(icon)) sprintf(tmp, "%s", icon); else *tmp = NULL;
+				char tmp[STD_PATH_LEN]; if(HAS(icon)) sprintf(tmp, "%s", icon); else *tmp = NULL;
 
 				sprintf(icon, "%s/%s.JPG", param, titleid); if(file_exists(icon)) return;
 				sprintf(icon, "%s/%s.PNG", param, titleid); if(file_exists(icon)) return;
@@ -404,10 +404,10 @@ static enum icon_type get_default_icon_by_type(u8 f1)
 
 static enum icon_type get_default_icon(char *icon, const char *param, char *file, int is_dir, char *tempID, int ns, int abort_connection, u8 f0, u8 f1)
 {
-	char filename[MAX_PATH_LEN];
+	char filename[STD_PATH_LEN];
 
 	if(ns == FROM_MOUNT)
-		sprintf(filename, "%s", file);
+		snprintf(filename, STD_PATH_LEN, "%s", file);
 	else
 		*filename = NULL;
 
@@ -452,7 +452,45 @@ no_icon0:
 			default_icon = iDVD;
 	}
 
-	strcpy(icon, wm_icons[default_icon]);
+#ifdef COBRA_ONLY
+	if(NO_ICON && IS_PS3_FOLDER && !IS_NTFS && !IS_NET && IS_INGAME)
+	{
+		sprintf(icon, "%s/%s", param, file);
+
+		//extact icon0.png from hdd/usb (not from ntfs)
+		if(file_exists(icon))
+		{
+			char *cobra_iso_list[1];
+			cobra_iso_list[0] = icon;
+
+			{ PS3MAPI_ENABLE_ACCESS_SYSCALL8 }
+
+			cobra_send_fake_disc_eject_event();
+			sys_timer_usleep(10000);
+			cobra_umount_disc_image();
+			cobra_mount_ps3_disc_image(cobra_iso_list, 1);
+			sys_timer_usleep(10000);
+			cobra_send_fake_disc_insert_event();
+			sys_timer_usleep(10000);
+
+			*icon = NULL;
+			wait_for("/dev_bdvd/PS3_GAME/PARAM.SFO", 3);
+
+			size_t len = get_name(icon, file, GET_WMTMP); strcat(icon, ".SFO");
+			file_copy("/dev_bdvd/PS3_GAME/PARAM.SFO", icon, COPY_WHOLE_FILE);
+			sprintf(icon + len, ".PNG");
+			file_copy("/dev_bdvd/PS3_GAME/ICON0.PNG", icon, COPY_WHOLE_FILE);
+
+			cobra_send_fake_disc_eject_event();
+			sys_timer_usleep(4000);
+			cobra_umount_disc_image();
+
+			{ PS3MAPI_DISABLE_ACCESS_SYSCALL8 }
+		}
+	}
+#endif
+
+	if(!HAS(icon)) strcpy(icon, wm_icons[default_icon]);
 	return default_icon;
 }
 
@@ -799,8 +837,12 @@ static int check_drive(u8 f0)
 	if(!webman_config->dev_ms && (f0 == 14)) return FAILED;
 	if(!webman_config->dev_cf && (f0 == 15)) return FAILED;
 
+#ifdef COBRA_ONLY
 	if( (IS_NTFS) && (!webman_config->usb0 && !webman_config->usb1 && !webman_config->usb2 &&
 					  !webman_config->usb3 && !webman_config->usb6 && !webman_config->usb7)) return FAILED;
+#else
+	if(IS_NTFS) return FAILED; // is_ntfs (nonCobra)
+#endif
 
 	// is_net
 #ifdef COBRA_ONLY
@@ -881,7 +923,6 @@ static void set_sort_key(char *skey, char *templn, int key, u8 subfolder, u8 f1)
 static bool game_listing(char *buffer, char *templn, char *param, char *tempstr, u8 mode, bool auto_mount)
 {
 	u64 c_len = 0;
-	CellRtcTick pTick;
 	u32 buf_len = strlen(buffer);
 
 	struct CellFsStat buf;
@@ -935,28 +976,10 @@ static bool game_listing(char *buffer, char *templn, char *param, char *tempstr,
 
 
 	// --- wait until 120 seconds if server is busy loading games ---
-	c_len = 0; while(loading_games && working && (c_len < 600)) {sys_timer_usleep(200000); c_len++;}
+	c_len = 0; while(loading_games && working && (c_len < 600)) {sys_ppu_thread_usleep(200000); c_len++;}
 
 	if(c_len >= 600 || !working) return false;
 	// ---
-
-/*
-	CellRtcTick pTick, pTick2;
-	cellRtcGetCurrentTick(&pTick);
-	int upd_time=0;
-
-	if(file_exists(WMTMP "/games.html"))
-		upd_time=buf.st_mtime;
-
-	CellRtcDateTime rDate;
-	cellRtcSetTime_t(&rDate, upd_time);
-	cellRtcGetTick(&rDate, &pTick2);
-
-	sprintf(templn, "[%ull %ull %i ]<br>", pTick2, pTick, (pTick.tick-pTick2.tick)/1000000);
-	strcat(buffer, templn);
-
-	if(strstr(param, "/index.ps3?") || ((pTick.tick-pTick2.tick)/1000000)>43200) {DELETE_CACHED_GAMES}
-*/
 
 	const u32 BUFFER_MAXSIZE = (BUFFER_SIZE_ALL - _12KB_);
 
@@ -990,8 +1013,8 @@ static bool game_listing(char *buffer, char *templn, char *param, char *tempstr,
 		typedef struct
 		{
 			char path[MAX_LINE_LEN];
-		}
-		t_line_entries;
+		} t_line_entries;
+
 		t_line_entries *line_entry = (t_line_entries *)sysmem_html;
 		u16 max_entries = (BUFFER_MAXSIZE / MAX_LINE_LEN); tlen = 0;
 
@@ -1071,13 +1094,13 @@ static bool game_listing(char *buffer, char *templn, char *param, char *tempstr,
 				if(IS_GAMEI_FOLDER) {if(is_net || (IS_HDD0) || (IS_NTFS) || (!webman_config->ps3l)) continue;}
 #endif
 				if(IS_VIDEO_FOLDER) {if(is_net) continue; else strcpy(paths[10], (IS_HDD0) ? "video" : "GAMES_DUP");}
-				if(IS_NTFS)  {if(f1 > 8 || !cobra_mode) break; else if(IS_JB_FOLDER || (f1 == 7)) continue;} // 0="GAMES", 1="GAMEZ", 7="PSXGAMES", 9="ISO", 10="video", 11="GAMEI", 12="ROMS"
+				if(IS_NTFS)  {if(f1 > 8) break; else if(IS_JB_FOLDER || (f1 == 7)) continue;} // 0="GAMES", 1="GAMEZ", 7="PSXGAMES", 9="ISO", 10="video", 11="GAMEI", 12="ROMS"
 
 #ifdef COBRA_ONLY
  #ifndef LITE_EDITION
 				if(is_net)
 				{
-					if(f1 > 8 || !cobra_mode) break; // ignore 9="ISO", 10="video", 11="GAMEI"
+					if(f1 > 8) break; // ignore 9="ISO", 10="video", 11="GAMEI"
 				}
  #endif
 #endif
@@ -1133,7 +1156,6 @@ static bool game_listing(char *buffer, char *templn, char *param, char *tempstr,
 				int fd2 = 0, flen, slen;
 				char tempID[12];
 				u8 is_iso = 0;
-				cellRtcGetCurrentTick(&pTick);
 
 #ifdef COBRA_ONLY
  #ifndef LITE_EDITION
@@ -1198,8 +1220,8 @@ static bool game_listing(char *buffer, char *templn, char *param, char *tempstr,
 											*icon ? icon : wm_icons[default_icon], w, h, templn, neth, param, enc_dir_name);
 						}
 						else
-							flen = sprintf(tempstr + HTML_KEY_LEN, "%s%s/%s?random=%x\"><img id=\"im%i\" src=\"%s\"%s%s%s class=\"gi\"></a></div><div class=\"gn\"><a href=\"%s%s/%s\">%s",
-											neth, param, enc_dir_name, (u16)pTick.tick, idx,
+							flen = sprintf(tempstr + HTML_KEY_LEN, "%s%s/%s\"><img id=\"im%i\" src=\"%s\"%s%s%s class=\"gi\"></a></div><div class=\"gn\"><a href=\"%s%s/%s\">%s",
+											neth, param, enc_dir_name, idx,
 											icon, onerror_prefix, ((*onerror_prefix != NULL) && default_icon) ? wm_icons[default_icon] : "", onerror_suffix,
 											neth, param, enc_dir_name, templn);
 
@@ -1291,7 +1313,7 @@ next_html_entry:
 
 							urlenc(enc_dir_name, entry.d_name);
 
-							templn[64] = NULL;
+							templn[80] = NULL;
 
 							if(urlenc(tempstr, icon)) sprintf(icon, "%s", tempstr);
 
@@ -1310,7 +1332,7 @@ next_html_entry:
 							if(mobile_mode)
 							{
 								if(strchr(enc_dir_name, '"') || strchr(icon, '"')) continue; // ignore names with quotes: cause syntax error in javascript: gamelist.js
-								for(size_t c = 0; templn[c] > 0; c++) {if((templn[c] == '"') || (templn[c] < ' ')) templn[c] = ' ';} // replace invalid chars
+								for(unsigned char *c = (unsigned char *)templn; *c; c++) {if((*c == '"') || (*c < ' ')) *c = ' ';} // replace invalid chars
 
 								int w = 260, h = 300; if(strstr(icon, "ICON0.PNG")) {w = 320, h = 176;} else if(strstr(icon, "icon_wm_")) {w = 280, h = 280;}
 
@@ -1322,8 +1344,8 @@ next_html_entry:
 								slen = strlen(templn);
 								do
 								{
-									flen = sprintf(tempstr + HTML_KEY_LEN, "%s%s/%s?random=%x\"><img id=\"im%i\" src=\"%s\"%s%s%s class=\"gi\"></a></div><div class=\"gn\"><a href=\"%s%s/%s\">%s",
-													param, "", enc_dir_name, (u16)pTick.tick, idx, icon, onerror_prefix, ((*onerror_prefix != NULL) && default_icon) ? wm_icons[default_icon] : "", onerror_suffix, param, "", enc_dir_name, templn);
+									flen = sprintf(tempstr + HTML_KEY_LEN, "%s%s/%s\"><img id=\"im%i\" src=\"%s\"%s%s%s class=\"gi\"></a></div><div class=\"gn\"><a href=\"%s%s/%s\">%s",
+													param, "", enc_dir_name, idx, icon, onerror_prefix, ((*onerror_prefix != NULL) && default_icon) ? wm_icons[default_icon] : "", onerror_suffix, param, "", enc_dir_name, templn);
 
 									slen -= 4; if(slen < 32) break;
 									templn[slen] = NULL;
@@ -1334,8 +1356,6 @@ next_html_entry:
 							if(flen > MAX_LINE_LEN) continue; //ignore lines too long
 							sprintf(line_entry[idx].path, "%s", tempstr); idx++;
 							tlen += (flen + div_size);
-
-							cellRtcGetCurrentTick(&pTick);
 						}
 //////////////////////////////
 						if(subfolder) goto next_html_entry;
@@ -1364,7 +1384,7 @@ next_html_entry:
 
 #ifdef COBRA_ONLY
  #ifndef LITE_EDITION
-			if(is_net && (ns >= 0) && (ns!=g_socket)) {shutdown(ns, SHUT_RDWR); socketclose(ns); ns=-2;}
+			if(is_net && (ns >= 0) && (ns!=g_socket)) {shutdown(ns, SHUT_RDWR); socketclose(ns); ns = -2;}
  #endif
 #endif
 		}
@@ -1372,14 +1392,14 @@ next_html_entry:
 		if(idx)
 		{   // sort html game items
 			u16 n, m;
-			char *swap = tempstr;
+			t_line_entries swap;
 			for(n = 0; n < (idx - 1); n++)
 				for(m = (n + 1); m < idx; m++)
 					if(strncmp(line_entry[n].path, line_entry[m].path, HTML_KEY_LEN) > 0)
 					{
-						strcpy(swap, line_entry[n].path);
-						strcpy(line_entry[n].path, line_entry[m].path);
-						strcpy(line_entry[m].path, swap);
+						swap = line_entry[n];
+						line_entry[n] = line_entry[m];
+						line_entry[m] = swap;
 					}
 		}
 

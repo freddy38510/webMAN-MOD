@@ -52,7 +52,7 @@
 
 ///////////// PS3MAPI END //////////////
 
-#if defined(COBRA_ONLY) || defined(PS3MAPI)
+#if defined(REMOVE_SYSCALLS) || defined(PS3MAPI)
 #define CFW_SYSCALLS 16
 static u16 sc_disable[CFW_SYSCALLS] = {200, 201, 202, 203, 204, 1022, 6, 7, 10, 11, 15, 20, 35, 36, 38, 9};
 #else
@@ -441,7 +441,7 @@ static void ps3mapi_syscall8(char *buffer, char *templn, char *param)
 	}
 	else
 	{
-		if(syscalls_removed && (ret_val == 0)) ret_val = 1;
+		if(syscalls_removed && (ret_val == 0)) ret_val = 1; if(!c_firmware) ret_val = 4;
 
 		add_radio_button("mode", "0", "sc8_0", "Fully enabled", _BR_, (ret_val == 0), buffer);
 		add_radio_button("mode", "1", "sc8_1", "Partially disabled : Keep only COBRA/MAMBA/PS3MAPI features", _BR_, (ret_val == 1), buffer);
@@ -1620,7 +1620,7 @@ static void handleclient_ps3mapi(u64 conn_s_ps3mapi_p)
 			break;
 		}
 
-		sys_timer_usleep(1668);
+		sys_ppu_thread_usleep(1668);
 	}
 
 	sprintf(buffer, PS3MAPI_DISCONNECT_NOTIF, inet_ntoa(conn_info.remote_adr));
@@ -1640,26 +1640,27 @@ static void ps3mapi_thread(u64 arg)
 	{ system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_CORE_MINVERSION); core_minversion = (int)(p1); }
 	if((core_minversion !=0) &&(PS3MAPI_CORE_MINVERSION == core_minversion)) //Check if ps3mapi core has a compatible min_version.
 	{
-		int list_s = FAILED;
+		int list_s = NONE;
+
 	relisten:
 		if(working) list_s = slisten(PS3MAPIPORT, 4);
 		else goto end;
 
-		if(working && (list_s<0))
+		if(list_s < 0)
 		{
-			sys_timer_sleep(3);
+			sys_ppu_thread_sleep(1);
 			if(working) goto relisten;
 			else goto end;
 		}
 
-		//if(working && (list_s >= 0))
+		//if(list_s >= 0)
 		{
 			while(working)
 			{
-				sys_timer_usleep(1668);
+				sys_ppu_thread_usleep(100000);
 				int conn_s_ps3mapi;
 				if (!working) goto end;
-				else
+
 				if(sys_admin && ((conn_s_ps3mapi = accept(list_s, NULL, NULL)) > 0))
 				{
 					sys_ppu_thread_t t_id;
@@ -1670,7 +1671,6 @@ static void ps3mapi_thread(u64 arg)
 				if((sys_net_errno == SYS_NET_EBADF) || (sys_net_errno == SYS_NET_ENETDOWN))
 				{
 					sclose(&list_s);
-					list_s = FAILED;
 					if(working) goto relisten;
 					else break;
 				}

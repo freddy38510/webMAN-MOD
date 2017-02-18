@@ -54,7 +54,7 @@ static void parse_param_sfo(unsigned char *mem, char *titleID, char *title, u16 
 	READ_SFO_HEADER()
 
 	memset(titleID, 0, 10);
-	memset(title, 0, 64);
+	memset(title, 0, 128);
 
 	u8 fcount = 0;
 
@@ -71,7 +71,7 @@ static void parse_param_sfo(unsigned char *mem, char *titleID, char *title, u16 
 		else
 		if(!memcmp((char *) &mem[str], "TITLE", 6))
 		{
-			strncpy(title, (char *)mem + pos, 63);
+			strncpy(title, (char *)mem + pos, 128);
 #ifndef ENGLISH_ONLY
 			if(*TITLE_XX == NULL)
 #endif
@@ -81,7 +81,7 @@ static void parse_param_sfo(unsigned char *mem, char *titleID, char *title, u16 
 		else
 		if(!memcmp((char *) &mem[str], TITLE_XX, 9))
 		{
-			strncpy(title, (char *)mem + pos, 63);
+			strncpy(title, (char *)mem + pos, 128);
 			if(++fcount > 2) break;
 		}
 #endif
@@ -181,6 +181,7 @@ static bool getTitleID(char *filename, char *titleID, u8 opcode)
 			if(ret && opcode == FIX_SFO) save_file(filename, paramsfo, sfo_size);
 		}
 	}
+
 	return ret;
 }
 
@@ -266,7 +267,7 @@ static void fix_game_folder(char *path)
 			}
 			else if(isDir(fix_game_path[plevel]) && (webman_config->fixgame!=FIX_GAME_QUICK)) fix_game_folder(fix_game_path[plevel]);
 
-			sys_timer_usleep(1000);
+			sys_ppu_thread_usleep(1000);
 		}
 
 		cellFsClosedir(fd);
@@ -295,7 +296,7 @@ static void fix_iso(char *iso_file, uint64_t maxbytes, bool patch_update)
 	struct CellFsStat buf;
 
 	if(islike(iso_file, "/net") || strstr(iso_file, ".ntfs[")) ; else
-	if(fix_aborted || cellFsStat(iso_file, &buf) != CELL_FS_SUCCEEDED) return;
+	if(fix_aborted || (cellFsStat(iso_file, &buf) != CELL_FS_SUCCEEDED) || (c_firmware >= LATEST_CFW)) return;
 
 	int fd; char titleID[10], update_path[MAX_PATH_LEN];
 
@@ -369,7 +370,7 @@ static void fix_iso(char *iso_file, uint64_t maxbytes, bool patch_update)
 
 				while(true)
 				{
-					sys_timer_usleep(1000);
+					sys_ppu_thread_usleep(1000);
 					if(fix_aborted) goto exit_fix;
 
 					if(t==0) lba = getlba(chunk, chunk_size, "EBOOT.BIN;1", 11, &start);
@@ -422,7 +423,7 @@ static void fix_iso(char *iso_file, uint64_t maxbytes, bool patch_update)
 			size -= chunk_size;
 			if(chunk_size > size) chunk_size = (int) size;
 
-			sys_timer_usleep(1000);
+			sys_ppu_thread_usleep(1000);
 		}
 exit_fix:
 		cellFsClose(fd);
@@ -442,6 +443,8 @@ exit_fix:
 static void fix_game(char *game_path, char *titleID, uint8_t fix_type)
 {
 	memset(titleID, 0, 10);
+
+	if(c_firmware >= LATEST_CFW) return;
 
 	if(file_exists(game_path) || islike(game_path, "/net") || strstr(game_path, ".ntfs["))
 	{
@@ -465,9 +468,9 @@ static void fix_game(char *game_path, char *titleID, uint8_t fix_type)
 				sprintf(filename, "%s/PARAM.SFO", game_path);
 
 			if(file_exists(filename) == false) sprintf(filename, "%s/PS3_GAME/PARAM.SFO", game_path);
-			if(file_exists(filename) == false) {waitfor("/dev_bdvd", 10); sprintf(filename, "/dev_bdvd/PS3_GAME/PARAM.SFO");}
+			if(file_exists(filename) == false) {wait_for("/dev_bdvd", 10); sprintf(filename, "/dev_bdvd/PS3_GAME/PARAM.SFO");}
 
-			char paramsfo[_4KB_]; unsigned char	*mem = (u8*)paramsfo;
+			char paramsfo[_4KB_]; unsigned char *mem = (u8*)paramsfo;
 			uint64_t bytes_read = 0;
 
 			bytes_read = read_file(filename, paramsfo, _4KB_, 0);

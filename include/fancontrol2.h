@@ -84,10 +84,10 @@ static void poll_thread(uint64_t poll)
 		{
 			t1 = t2 = 0;
 			get_temperature(0, &t1); // CPU: 3E030000 -> 3E.03°C -> 62.(03/256)°C
-			sys_timer_usleep(300000);
+			sys_ppu_thread_usleep(300000);
 
 			get_temperature(1, &t2); // RSX: 3E030000 -> 3E.03°C -> 62.(03/256)°C
-			sys_timer_usleep(200000);
+			sys_ppu_thread_usleep(200000);
 
 			if(!max_temp || fan_ps2_mode) continue; // if fan mode was changed to manual by another thread while doing usleep
 
@@ -194,7 +194,7 @@ static void poll_thread(uint64_t poll)
  #endif
 					sprintf(msg, "%s\n CPU: %i°C   RSX: %i°C", STR_OVERHEAT, t1, t2);
 					show_msg(msg);
-					sys_timer_sleep(2);
+					sys_ppu_thread_sleep(2);
 
 					if((t1 > MAX_TEMPERATURE) || (t2 > MAX_TEMPERATURE))
 					{
@@ -245,6 +245,35 @@ static void poll_thread(uint64_t poll)
 		// Poll downloaded pkg files (if is on XMB)
 		if((sec & 1) && (gTick.tick == rTick.tick)) poll_downloaded_pkg_files(msg);
 #endif
+
+		// Auto-mount JB game found on root of USB device
+		if((webman_config->autob) && (sec & 1) && (gTick.tick == rTick.tick) && (!is_mounting))
+		{
+			if(!isDir("/dev_bdvd"))
+			{
+				for(u8 f0 = 1; f0 < 16; f0++)
+				{
+					if(IS_NET || IS_NTFS) continue;
+
+					if(!check_drive(f0))
+					{
+						if(automount != f0)
+						{
+#ifdef COBRA_ONLY
+							sprintf(msg, "%s/AUTOMOUNT.ISO", drives[f0]);
+							if(file_exists(msg)) {mount_with_mm(msg, 0); automount = f0; break;}
+							else
+#endif
+							{
+								sprintf(msg, "%s/PS3_GAME/PARAM.SFO", drives[f0]);
+								if(file_exists(msg)) {mount_with_mm(msg, 0); automount = f0; break;}
+							}
+						}
+						else if(!isDir(drives[f0])) automount = 0;
+					}
+				}
+			}
+		}
 
 #ifdef DO_WM_REQUEST_POLLING
 		// Poll requests via local file

@@ -42,7 +42,7 @@ static int32_t register_ldd_controller(void)
 
 		capability = 0xFFFF; // CELL_PAD_CAPABILITY_PS3_CONFORMITY | CELL_PAD_CAPABILITY_PRESS_MODE | CELL_PAD_CAPABILITY_HP_ANALOG_STICK | CELL_PAD_CAPABILITY_ACTUATOR;
 		sys_pad_dbg_ldd_register_controller(data, (int32_t *)&(vpad_handle), 5, (uint32_t)capability << 1); //vpad_handle = cellPadLddRegisterController();
-		sys_timer_usleep(500000); // allow some time for ps3 to register ldd controller
+		sys_ppu_thread_usleep(500000); // allow some time for ps3 to register ldd controller
 
 		if (vpad_handle < 0) return(vpad_handle);
 
@@ -123,15 +123,15 @@ static u8 parse_pad_command(const char *param, u8 is_combo)
 		else
 		{
 			if(strcasestr(param, "up"   )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_UP;		data.button[CELL_PAD_BTN_OFFSET_PRESS_UP]		= 0xFF;}
-			if(strcasestr(param, "down" )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_DOWN;	data.button[CELL_PAD_BTN_OFFSET_PRESS_DOWN]	= 0xFF;}
-			if(strcasestr(param, "left" )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_LEFT;	data.button[CELL_PAD_BTN_OFFSET_PRESS_LEFT]	= 0xFF;}
-			if(strcasestr(param, "right")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_RIGHT; data.button[CELL_PAD_BTN_OFFSET_PRESS_RIGHT] = 0xFF;}
+			if(strcasestr(param, "down" )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_DOWN;	data.button[CELL_PAD_BTN_OFFSET_PRESS_DOWN]		= 0xFF;}
+			if(strcasestr(param, "left" )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_LEFT;	data.button[CELL_PAD_BTN_OFFSET_PRESS_LEFT]		= 0xFF;}
+			if(strcasestr(param, "right")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL1] |= CELL_PAD_CTRL_RIGHT;	data.button[CELL_PAD_BTN_OFFSET_PRESS_RIGHT]	= 0xFF;}
 		}
 
-		if(strcasestr(param, "cross"   )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_CROSS;		data.button[CELL_PAD_BTN_OFFSET_PRESS_CROSS]		= 0xFF;}
-		if(strcasestr(param, "square"  )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_SQUARE;	 data.button[CELL_PAD_BTN_OFFSET_PRESS_SQUARE]	 = 0xFF;}
-		if(strcasestr(param, "circle"  )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_CIRCLE;	 data.button[CELL_PAD_BTN_OFFSET_PRESS_CIRCLE]	 = 0xFF;}
-		if(strcasestr(param, "triangle")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_TRIANGLE; data.button[CELL_PAD_BTN_OFFSET_PRESS_TRIANGLE] = 0xFF;}
+		if(strcasestr(param, "cross"   )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_CROSS;	data.button[CELL_PAD_BTN_OFFSET_PRESS_CROSS]	= 0xFF;}
+		if(strcasestr(param, "square"  )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_SQUARE;	data.button[CELL_PAD_BTN_OFFSET_PRESS_SQUARE]	= 0xFF;}
+		if(strcasestr(param, "circle"  )) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_CIRCLE;	data.button[CELL_PAD_BTN_OFFSET_PRESS_CIRCLE]	= 0xFF;}
+		if(strcasestr(param, "triangle")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_TRIANGLE;	data.button[CELL_PAD_BTN_OFFSET_PRESS_TRIANGLE]	= 0xFF;}
 
 		if(strcasestr(param, "l1")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_L1; data.button[CELL_PAD_BTN_OFFSET_PRESS_L1] = 0xFF;}
 		if(strcasestr(param, "l2")) {data.button[CELL_PAD_BTN_OFFSET_DIGITAL2] |= CELL_PAD_CTRL_L2; data.button[CELL_PAD_BTN_OFFSET_PRESS_L2] = 0xFF;}
@@ -159,7 +159,7 @@ static u8 parse_pad_command(const char *param, u8 is_combo)
 
 		if(!strcasestr(param, "hold"))
 		{
-			sys_timer_usleep(delay); // hold for 70ms
+			sys_ppu_thread_usleep(delay); // hold for 70ms
 
 			// release all buttons and set default values
 			memset(&data, 0, sizeof(CellPadData));
@@ -203,12 +203,12 @@ static CellPadData pad_read(void)
 {
 	CellPadData pad_data; pad_data.len = 0;
 
-	for(u8 n = 0;n < 10; n++)
+	for(u8 n = 0; n < 20; n++)
 	{
 		for(u8 p = 0; p < 8; p++)
 			if(cellPadGetData(p, &pad_data) == CELL_PAD_OK && pad_data.len > 0) return pad_data;
 
-		sys_timer_usleep(100000);
+		sys_ppu_thread_usleep(50000);
 	}
 
 	return pad_data;

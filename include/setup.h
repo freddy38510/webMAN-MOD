@@ -54,6 +54,10 @@ static void setup_parse_settings(char *param)
 	if(strstr(param, "x1=1")) webman_config->dev_ms = 1;
 	if(strstr(param, "x2=1")) webman_config->dev_cf = 1;
 
+#ifdef USE_NTFS
+	if(strstr(param, "xn=1")) webman_config->ntfs = 1;
+#endif
+
 	if(strstr(param, "lp=1")) webman_config->lastp = 1;
 	if(strstr(param, "ab=1")) webman_config->autob = 1;
 	if(strstr(param, "dy=1")) webman_config->delay = 1;
@@ -239,7 +243,8 @@ static void setup_parse_settings(char *param)
 	webman_config->nowarn = 0;
 	if(strstr(param, "warn=1")) webman_config->nowarn = 1;
 
-	webman_config->foot=get_valuen(param, "fp=", 0, 7);
+	webman_config->foot=get_valuen(param, "fp=", 0, 7); set_buffer_sizes(webman_config->foot);
+	if(!strstr(param, "mc=1")) webman_config->mc_app = 1;
 
 	webman_config->spp = 0;
 #ifdef COBRA_ONLY
@@ -339,7 +344,6 @@ static void setup_parse_settings(char *param)
 
 #ifdef COBRA_ONLY
  #ifdef BDVD_REGION
-	//if(cobra_mode)
 	{
 		u8 cconfig[15];
 		CobraConfig *cobra_config = (CobraConfig*) cconfig;
@@ -427,8 +431,8 @@ static void setup_form(char *buffer, char *templn)
 	char STR_FANCTRL2[48];//	= "CTRL FAN";
 	char STR_FANCTRL4[72];//	= "CTRL DYN FAN";
 	char STR_FANCTRL5[88];//	= "CTRL MIN FAN";
-	char STR_UPDN[16]			= "&#8593;/&#8595;"; //↑/↓
-	char STR_LFRG[16]			= "&#8592;/&#8594;"; //←/→
+	//char STR_UPDN[16]			= "&#8593;/&#8595;"; //↑/↓
+	//char STR_LFRG[16]			= "&#8592;/&#8594;"; //←/→
 
 	language("STR_SCAN1", STR_SCAN1, "Scan these devices");
 	language("STR_PSPL", STR_PSPL, "Show PSP Launcher");
@@ -512,6 +516,10 @@ static void setup_form(char *buffer, char *templn)
 	if(isDir(drives[12])) add_check_box("x1", "1", drives[12], _BR_, (webman_config->dev_ms), buffer);
 	if(isDir(drives[13])) add_check_box("x2", "1", drives[13], _BR_, (webman_config->dev_cf), buffer);
 
+#ifdef USE_NTFS
+	add_check_box("xn", "1", "/dev_ntfs", _BR_, (webman_config->ntfs), buffer);
+#endif
+
 	//Scan for content
 	sprintf(templn, "<td nowrap valign=top><u>%s:</u><br>", STR_SCAN2); strcat(buffer, templn);
 
@@ -562,6 +570,8 @@ static void setup_form(char *buffer, char *templn)
 	add_check_box("rf", "1", STR_CONTSCAN, " ", (webman_config->refr), buffer);
 	if(file_exists(LAUNCHPAD_FILE_XML))
 		add_check_box("lx", "1", "& LaunchPad.xml", _BR_, (webman_config->launchpad_xml), buffer);
+	else
+		strcat(buffer, "<br>");
 #else
 	add_check_box("rf", "1",  STR_CONTSCAN, _BR_, (webman_config->refr), buffer);
 #endif
@@ -784,7 +794,7 @@ static void setup_form(char *buffer, char *templn)
 #endif
 
 	//memory usage
-	sprintf(templn, " %s [%iKB]: <select name=\"fp\" accesskey=\"M\">", STR_MEMUSAGE, (int)(BUFFER_SIZE_ALL / KB)); strcat(buffer, templn);
+	sprintf(templn, " %s [%iKB]: <select name=\"fp\" accesskey=\"M\">", STR_MEMUSAGE, (webman_config->mc_app) ? (int)(BUFFER_SIZE_ALL / KB) : 3072); strcat(buffer, templn);
 
 	value = webman_config->foot;
 	add_option_item("0", "Standard (896KB)"                , (value == 0), buffer);
@@ -792,10 +802,16 @@ static void setup_form(char *buffer, char *templn)
 	add_option_item("3", "Min+ (512KB)"                    , (value == 3), buffer);
 	add_option_item("2", "Max (1280KB)"                    , (value == 2), buffer);
 	add_option_item("4", "Max PS3+ (1088K PS3)"            , (value == 4), buffer);
-	add_option_item("5", "Max PSX+ ( 368K PS3 + 720K PSX)" , (value == 5), buffer);
-	add_option_item("6", "Max BLU+ ( 368K PS3 + 720K BLU)" , (value == 6), buffer);
-	add_option_item("7", "Max PSP+ ( 368K PS3 + 720K PSP)" , (value == 6), buffer);
-	strcat(buffer, "</select><p>");
+	add_option_item("5", "Max PSX+ ( 368K PS3 + 768K PSX)" , (value == 5), buffer);
+	add_option_item("6", "Max BLU+ ( 368K PS3 + 768K BLU)" , (value == 6), buffer);
+#ifdef MOUNT_ROMS
+	add_option_item("7", "Max PSP+ ( 368K PS3 + 768K PSP/ROMS)", (value == 7), buffer);
+#else
+	add_option_item("7", "Max PSP+ ( 368K PS3 + 768K PSP)" , (value == 7), buffer);
+#endif
+	strcat(buffer, "</select>");
+
+	add_check_box("mc", "1", "3072KB [MC]", "<p>", !(webman_config->mc_app), buffer);
 
 #ifndef ENGLISH_ONLY
 	//language
@@ -926,16 +942,21 @@ static void setup_form(char *buffer, char *templn)
 	add_check_box("prs", "1", STR_RESTART2,   " : <b>L3+R2+O</b><br>"          , !(webman_config->combo & RESTARTPS),  buffer);
 #endif
 	add_check_box("puw", "1", STR_UNLOADWM,   " : <b>L3+R2+R3</b><br>"         , !(webman_config->combo & UNLOAD_WM),  buffer);
-	add_check_box("pf1", "1", STR_FANCTRL2,   " : <b>SELECT+"                  , !(webman_config->combo & MANUALFAN),  buffer); sprintf(templn, "%s</b><br>", STR_UPDN); strcat(buffer, templn);
-	add_check_box("pf2", "1", STR_FANCTRL5,   " : <b>SELECT+"                  , !(webman_config->combo & MINDYNFAN),  buffer); sprintf(templn, "%s</b><br>", STR_LFRG); strcat(buffer, templn);
+//	add_check_box("pf1", "1", STR_FANCTRL2,   " : <b>SELECT+"                  , !(webman_config->combo & MANUALFAN),  buffer); sprintf(templn, "%s</b><br>", STR_UPDN); strcat(buffer, templn);
+//	add_check_box("pf2", "1", STR_FANCTRL5,   " : <b>SELECT+"                  , !(webman_config->combo & MINDYNFAN),  buffer); sprintf(templn, "%s</b><br>", STR_LFRG); strcat(buffer, templn);
+	add_check_box("pf1", "1", STR_FANCTRL2,   " : <b>SELECT+&#8593;/&#8595;</b><br>", !(webman_config->combo & MANUALFAN),  buffer);
+	add_check_box("pf2", "1", STR_FANCTRL5,   " : <b>SELECT+&#8592;/&#8594;</b><br>", !(webman_config->combo & MINDYNFAN),  buffer);
 #ifdef REMOVE_SYSCALLS
 	add_check_box("psc", "1", STR_DELCFWSYS2, " : <b>R2+&#8710;</b> ("         , !(webman_config->combo & DISABLESH),  buffer);
-	add_check_box("kcc", "1", "CCAPI • PS3MAPI", " ",  !(webman_config->keep_ccapi), buffer);
+	add_check_box("kcc", "1", "CCAPI", " ",  !(webman_config->keep_ccapi), buffer);
 
-	strcat(buffer, "<select name=\"sc8\">");
-	add_option_item("1", STR_ENABLED, (webman_config->sc8mode != 4), buffer);
-	add_option_item("0", STR_DISABLED,          (webman_config->sc8mode == 4), buffer);
-	strcat(buffer, "</select>)<br>");
+ #ifdef COBRA_ONLY
+	strcat(buffer, "• PS3MAPI <select name=\"sc8\">");
+	add_option_item("1", STR_ENABLED,  (webman_config->sc8mode != 4), buffer);
+	add_option_item("0", STR_DISABLED, (webman_config->sc8mode == 4), buffer);
+	strcat(buffer, "</select>");
+ #endif
+	strcat(buffer, ")<br>");
 #endif
 
 #ifndef LITE_EDITION
@@ -1053,6 +1074,10 @@ static void reset_settings(void)
 	//webman_config->dev_ms = 0;
 	//webman_config->dev_cf = 0;
 
+#ifdef USE_NTFS
+	webman_config->ntfs = 1;
+#endif
+
 	//webman_config->lastp = 0;       //disable last play
 	//webman_config->autob = 0;       //disable check for AUTOBOOT.ISO
 	//webman_config->delay = 0;       //don't delay loading of AUTOBOOT.ISO/last-game (Disc Auto-start)
@@ -1135,7 +1160,7 @@ static void reset_settings(void)
 	{
 		if(read_file(WMCONFIG, (char*)&wmconfig, sizeof(WebmanCfg), DONT_CLEAR_DATA)) break;
 
-		sys_timer_usleep(500000);
+		sys_ppu_thread_usleep(500000);
 	}
 
 	#ifndef COBRA_ONLY

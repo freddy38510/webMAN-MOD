@@ -34,7 +34,8 @@ static void restore_cfw_syscalls(void)
 
 	syscalls_removed = false;
 }
-#endif
+
+#endif // #ifdef PS3MAPI
 
 static void restore_blocked_urls(void)
 {
@@ -139,23 +140,24 @@ static void disable_cfw_syscalls(bool keep_ccapi)
 		}
 	}
 
-	sys_timer_sleep(2);
+	sys_ppu_thread_sleep(2);
 
 	{ PS3MAPI_DISABLE_ACCESS_SYSCALL8 }
 }
-#endif
+
+#endif // #ifdef REMOVE_SYSCALLS
 
 static bool block_url(u64 addr, u64 value)
 {
 	if(url_count>=MAX_BLOCKED_URL) return false;
 
 	// backup original value @ poke address
-	blocked_url[url_count][0]=addr;
-	blocked_url[url_count][1]=peek_lv1(addr);
+	blocked_url[url_count][0] = addr;
+	blocked_url[url_count][1] = peek_lv1(addr);
 
 	poke_lv1(addr, value);
 
-	url_count++; addr += 0x20;
+	url_count++, addr += 0x20;
 
 	return true;
 }
