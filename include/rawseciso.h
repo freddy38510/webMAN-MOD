@@ -590,7 +590,7 @@ static int process_read_psx_cmd_iso(uint8_t *buf, uint64_t offset, uint64_t size
 }
 #endif
 
-static void my_memcpy(uint8_t *dst, uint8_t *src, int size)
+static inline void my_memcpy(uint8_t *dst, uint8_t *src, int size)
 {
 	for(int i = 0; i < size; i++) dst[i] = src[i];
 }
@@ -742,7 +742,7 @@ static void get_psx_track_datas(void)
 			tracks[num_tracks].track_number = num_tracks+1;
 			tracks[num_tracks].track_start_addr = ((uint32_t) buff[k + 4] << 24) | ((uint32_t) buff[k + 5] << 16) |
 												  ((uint32_t) buff[k + 6] << 8)  | ((uint32_t) buff[k + 7]);
-			num_tracks++;
+			num_tracks++; if(num_tracks >= 64) break;
 			k+= 8;
 		}
 
@@ -920,7 +920,7 @@ static void rawseciso_thread(uint64_t arg)
 
 	int ret = 0; cd_sector_size_param = 0;
 
-	args = (rawseciso_args *)(uint32_t)arg;
+	args = (rawseciso_args *)(uint32_t)arg; if(!args) sys_ppu_thread_exit(ret);
 
 	//DPRINTF("Hello VSH\n");
 

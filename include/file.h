@@ -335,7 +335,7 @@ int file_copy(const char *file1, char *file2, uint64_t maxbytes)
 
 	if(is_ntfs1 || cellFsOpen(file1, CELL_FS_O_RDONLY, &fd1, NULL, 0) == CELL_FS_SUCCEEDED)
 	{
-		sys_addr_t sysmem = NULL; uint64_t chunk_size = _256KB_;
+		sys_addr_t sysmem = NULL; uint64_t chunk_size = (buf.st_size <= _64KB_) ? _64KB_ : _256KB_;
 
 		if(g_sysmem) sysmem = g_sysmem; else
 		{
@@ -777,4 +777,71 @@ static void import_edats(const char *path1, const char *path2)
 
 	return;
 }
+
+/*
+static int read_text_line(int fd, char *line, unsigned int size, int *eof)
+{
+	if (size == 0) {*eof = true; return FAILED;}
+
+	*eof = false;
+
+	int line_started = 0;
+	unsigned int i = 0, p = 0;
+	char buffer[MAX_LINE_LEN];
+
+	uint8_t ch;
+	uint64_t bytes_read = 0;
+
+	while(i < (size - 1))
+	{
+		if(p >= bytes_read)
+		{
+			if(cellFsRead(fd, &buffer, MAX_LINE_LEN, &bytes_read) != CELL_FS_SUCCEEDED || bytes_read == 0)
+			{
+				*eof = true;
+				break;
+			}
+			ch = *buffer, p = 1;
+		}
+		else
+		{
+			ch = buffer[p++];
+		}
+
+		if(!line_started)
+		{
+			if (ch > ' ')
+			{
+				line[i++] = (char)ch;
+				line_started = 1;
+			}
+		}
+		else
+		{
+			if(ch == '\n' || ch == '\r')
+				break;
+
+			line[i++] = (char)ch;
+		}
+	}
+
+	line[i] = 0;
+
+	// Remove space chars at end
+	for(int j = i - 1; j >= 0; j--)
+	{
+		if(line[j] <= ' ')
+		{
+			line[j] = 0;
+			i = j;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return i;
+}
+*/
 #endif

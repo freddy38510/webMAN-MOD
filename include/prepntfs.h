@@ -1,5 +1,5 @@
 #ifdef USE_NTFS
-#define MAX_SECTIONS	(int)((0x10000-sizeof(rawseciso_args))/8)
+#define MAX_SECTIONS	(int)((_64KB_-sizeof(rawseciso_args))/8)
 
 //static char paths [13][12] = {"GAMES", "GAMEZ", "PS3ISO", "BDISO", "DVDISO", "PS2ISO", "PSXISO", "PSXGAMES", "PSPISO", "ISO", "video", "GAMEI", "ROMS"};
 
@@ -49,7 +49,7 @@ static int prepNTFS(u8 towait)
 	cellFsUnlink((char*)WMTMP "/games.html");
 	int fd = NONE;
 	u64 read = 0;
-	char path0[MAX_PATH_LEN], subpath[STD_PATH_LEN], filename[STD_PATH_LEN], sufix[8];
+	char path0[STD_PATH_LEN], subpath[STD_PATH_LEN], sufix[8], *filename = path0;
 
 	if(mountCount == -2)
 		for(i = 0; i < 2; i++)
@@ -194,39 +194,43 @@ next_ntfs_entry:
 										{
 											char *cue_buf = malloc(_2KB_);
 
-											int cue_size = ps3ntfs_read(fd, cue_buf, _2KB_);
-											ps3ntfs_close(fd);
-
-											if(cue_size > 13)
+											if(cue_buf)
 											{
-												cue = 1;
-												num_tracks = 0;
+												int cue_size = ps3ntfs_read(fd, cue_buf, _2KB_);
+												ps3ntfs_close(fd);
 
-												tracks[0].lba = 0;
-												tracks[0].is_audio = 0;
-
-												u8 use_pregap = 0;
-												int lba, lp = 0; char *templn = path;
-
-												while (lp < cue_size)
+												if(cue_size > 13)
 												{
-													lp = get_line(templn, cue_buf, cue_size, lp);
-													if(lp < 1) break;
+													cue = 1;
+													num_tracks = 0;
 
-													if(strstr(templn, "PREGAP")) {use_pregap = 1; continue;}
-													if(!strstr(templn, "INDEX 01") && !strstr(templn, "INDEX 1 ")) continue;
+													tracks[0].lba = 0;
+													tracks[0].is_audio = 0;
 
-													lba = parse_lba(templn, use_pregap && num_tracks); if(lba < 0) continue;
+													u8 use_pregap = 0;
+													int lba, lp = 0; char *templn = path;
 
-													tracks[num_tracks].lba = lba;
-													if(num_tracks) tracks[num_tracks].is_audio = 1;
+													while (lp < cue_size)
+													{
+														lp = get_line(templn, cue_buf, cue_size, lp);
+														if(lp < 1) break;
 
-													num_tracks++; if(num_tracks>=32) break;
+														if(strstr(templn, "PREGAP")) {use_pregap = 1; continue;}
+														if(!strstr(templn, "INDEX 01") && !strstr(templn, "INDEX 1 ")) continue;
+
+														lba = parse_lba(templn, use_pregap && num_tracks); if(lba < 0) continue;
+
+														tracks[num_tracks].lba = lba;
+														if(num_tracks) tracks[num_tracks].is_audio = 1;
+
+														num_tracks++; if(num_tracks>=32) break;
+													}
+
+													num_tracks++; if(num_tracks >= 32) break;
 												}
 
-												num_tracks++; if(num_tracks >= 32) break;
+												free(cue_buf);
 											}
-											free(cue_buf);
 										}
 									}
 
@@ -283,7 +287,7 @@ next_ntfs_entry:
 for_sfo:
 									if(m == mPS3) // mount PS3ISO
 									{
-										path[plen-3]='S', path[plen-2]='F', path[plen-1]='O';
+										strcpy(path + plen - 3, "SFO");
 										if(file_exists(path) == false)
 										{
 											if(isDir("/dev_bdvd")) do_umount(false);
@@ -296,7 +300,7 @@ for_sfo:
 											{
 												file_copy("/dev_bdvd/PS3_GAME/PARAM.SFO", path, COPY_WHOLE_FILE);
 
-												path[plen-3]='P', path[plen-2]='N', path[plen-1]='G';
+												strcpy(path + plen - 3, "PNG");
 												file_copy("/dev_bdvd/PS3_GAME/ICON0.PNG", path, COPY_WHOLE_FILE);
 											}
 
